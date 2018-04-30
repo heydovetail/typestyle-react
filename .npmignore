@@ -1,0 +1,17 @@
+# tests
+src/__specs__
+
+# build tools
+.circleci
+.storybook
+src/__stories__
+
+# editor settings
+.editorconfig
+.vscode
+tsconfig.*
+tslint.json
+
+# npm
+npm-debug.log*
+yarn-error.log
