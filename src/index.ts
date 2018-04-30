@@ -35,7 +35,7 @@ export function styled<T extends keyof DOMElementTypes, StyleProps extends {}>(
     inner?: InnerProps;
   };
 
-  const memoizedComputeStyles = memoizeUnbounded((props: Readonly<StyleProps>) => {
+  const memoizedComputeClass = memoizeUnbounded((props: Readonly<StyleProps>) => {
     try {
       return style(computeStyles(props));
     } finally {
@@ -47,12 +47,12 @@ export function styled<T extends keyof DOMElementTypes, StyleProps extends {}>(
     public static displayName = `Styled(${tag})`;
 
     public state = {
-      className: memoizedComputeStyles(this.props)
+      className: memoizedComputeClass(this.props)
     };
 
     public componentWillReceiveProps(nextProps: Readonly<Props>) {
       this.setState({
-        className: memoizedComputeStyles(nextProps)
+        className: memoizedComputeClass(nextProps)
       });
     }
 
