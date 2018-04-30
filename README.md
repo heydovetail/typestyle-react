@@ -1,2 +1,3 @@
 # typestyle-react
-React components for TypeStyle
+
+React component for TypeStyle

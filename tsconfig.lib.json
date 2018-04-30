@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig",
+  "exclude": [
+    "./src/**/__specs__/*",
+    "./src/**/__stories__/*"
+  ]
+}

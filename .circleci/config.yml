@@ -1,0 +1,128 @@
+aliases:
+  docker: &docker
+    docker:
+      - image: heydovetail/node:node-9.4-yarn-1.5.1-npm-5.6.0-awscli-1.15.3
+        environment:
+          NODE_ENV: test
+
+  restore_node_modules: &restore_node_modules
+    restore_cache:
+      name: Restore node_modules cache
+      keys:
+        - node-modules-{{ checksum "yarn.lock" }}
+
+  install_node_modules: &install_node_modules
+    run:
+      name: Install node modules
+      command: |
+        yarn
+        git checkout HEAD -- yarn.lock
+
+  cache_node_modules: &cache_node_modules
+    save_cache:
+      name: Save node_modules cache
+      key: node-modules-{{ checksum "yarn.lock" }}
+      paths:
+        - node_modules
+
+  publish: &publish
+    run:
+      name: Publish
+      command: |
+        ssh-add -D
+        (umask 077; echo -n $RELEASE_BOT_SSH_BASE64_PRIVATE_KEY | base64 --decode > ~/.ssh/id_rsa_release_bot)
+        ssh-add ~/.ssh/id_rsa_release_bot
+        git push . $(git rev-parse --abbrev-ref HEAD):master
+        git push . master:release/major
+        git push . master:release/minor
+        git push . master:release/patch
+        git push --all origin
+        (umask 077; echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc)
+        npm publish --access public
+
+  git_config: &git_config
+    run:
+      name: git config
+      command: |
+        git config --global user.email "releasebot@dovetailapp.com"
+        git config --global user.name "Release Bot"
+        git config --global push.followTags true
+
+version: 2
+jobs:
+  test:
+    <<: *docker
+    steps:
+      - checkout
+      - <<: *restore_node_modules
+      - <<: *install_node_modules
+      - <<: *cache_node_modules
+      - run: yarn test
+
+  release_major:
+    <<: *docker
+    steps:
+      - checkout
+      - <<: *restore_node_modules
+      - <<: *install_node_modules
+      - <<: *cache_node_modules
+      - <<: *git_config
+      - run: npm version major -m "%s [skip ci]"
+      - <<: *publish
+
+  release_minor:
+    <<: *docker
+    steps:
+      - checkout
+      - <<: *restore_node_modules
+      - <<: *install_node_modules
+      - <<: *cache_node_modules
+      - <<: *git_config
+      - run: npm version minor -m "%s [skip ci]"
+      - <<: *publish
+
+  release_patch:
+    <<: *docker
+    steps:
+      - checkout
+      - <<: *restore_node_modules
+      - <<: *install_node_modules
+      - <<: *cache_node_modules
+      - <<: *git_config
+      - run: npm version patch -m "%s [skip ci]"
+      - <<: *publish
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test:
+          filters:
+            branches:
+              ignore:
+                - /release\/.+/
+
+  release_major:
+    jobs:
+      - release_major:
+          filters:
+            branches:
+              only:
+                - release/major
+
+  release_minor:
+    jobs:
+      - release_minor:
+          filters:
+            branches:
+              only:
+                - release/minor
+
+  release_patch:
+    jobs:
+      - release_patch:
+          filters:
+            branches:
+              only:
+                - release/patch
+
