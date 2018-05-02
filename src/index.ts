@@ -3,6 +3,10 @@ import { forceRenderStyles, style, types } from "typestyle";
 
 export type StyleDescriptor = false | types.NestedCSSProperties | null | undefined;
 
+export type InnerRefProps<T extends keyof DOMElementTypes> = {
+  innerRef?: (node: DOMElementTypes[T] | null) => void;
+};
+
 /**
  * Create a React component that renders an instrinsic element with a
  * `className` computed by TypeStyle.
@@ -24,20 +28,19 @@ export type StyleDescriptor = false | types.NestedCSSProperties | null | undefin
  *     const primaryButton = <Button primary inner={{ id: "button-id" }} />
  *
  */
-export function styled<T extends keyof DetailedReactHTMLElements, StyleProps>(
+export function styled<T extends keyof DOMElementTypes, StyledProps>(
   tag: T,
-  styles: StyleDescriptor | ((props: Readonly<StyleProps>) => StyleDescriptor)
+  ...styles: Array<StyleDescriptor | ((props: Readonly<StyledProps>) => StyleDescriptor)>
 ) {
-  const computeStyles = typeof styles === "function" ? styles : () => styles;
+  type Props = JSX.IntrinsicElements[T] &
+    InnerRefProps<T> &
+    ({} extends StyledProps ? { styled?: StyledProps } : { styled: StyledProps });
 
-  type InnerProps = JSX.IntrinsicElements[T];
-  type Props = StyleProps & {
-    inner?: InnerProps;
-  };
-
-  const memoizedComputeClass = memoizeUnbounded((props: Readonly<StyleProps>) => {
+  const memoizedComputeClass = memoizeUnbounded((styledProps?: StyledProps) => {
     try {
-      return style(computeStyles(props));
+      return style(
+        ...styles.map(s => (typeof s === "function" ? s(styledProps !== undefined ? styledProps : ({} as StyledProps)) : s))
+      );
     } finally {
       forceRenderStylesDebounced();
     }
@@ -47,47 +50,68 @@ export function styled<T extends keyof DetailedReactHTMLElements, StyleProps>(
     public static displayName = `Styled(${tag})`;
 
     public state = {
-      className: memoizedComputeClass(this.props)
+      className: memoizedComputeClass(this.props.styled)
     };
 
     public componentWillReceiveProps(nextProps: Readonly<Props>) {
       this.setState({
-        className: memoizedComputeClass(nextProps)
+        className: memoizedComputeClass(nextProps.styled)
       });
     }
 
     public render(): DetailedReactHTMLElements[T] {
-      const { inner } = this.props;
+      // tslint:disable-next-line:no-any
+      const { innerRef, styled, children, className: innerClassName, ...innerProps } = this.props as any;
       const { className } = this.state;
       return React.createElement(
         tag,
-        inner !== undefined
-          ? {
-              // HACK: `as object` permits object spread to be used.
-              ...(inner as object),
-              className: inner.className !== undefined ? `${inner.className} ${className}` : className
-            }
-          : inner,
-        this.props.children
+        {
+          ...innerProps,
+          ref: innerRef,
+          className: innerClassName !== undefined ? `${innerClassName} ${className}` : className
+        },
+        children
       );
     }
   };
 }
 
-function memoizeUnbounded<Props, Result>(fn: (props: Props) => Result): (props: Props) => Result {
-  const cache: { [key: string]: Result | undefined } = {};
-  return props => {
-    const cacheKey = JSON.stringify(props);
+/**
+ * Memoize a function, using an unbounded cache (for simplicity). A console
+ * warning is emitted after 1000 calls are cached.
+ *
+ * The default serialiser JSON.stringify may fail if the param can't be
+ * stringified (e.g. circular structures).
+ */
+function memoizeUnbounded<Param, ReturnValue>(
+  fn: (param: Param) => ReturnValue,
+  serialize: (param: Param) => string = param => JSON.stringify(param)
+): (param: Param) => ReturnValue {
+  const cacheSizeWarn = 1000;
+  let cacheSize = 0;
+  const cache: { [key: string]: ReturnValue | undefined } = {};
+  return param => {
+    const cacheKey = serialize(param);
     const lookup = cache[cacheKey];
     if (lookup !== undefined) {
       return lookup;
     } else {
-      const computed = (cache[cacheKey] = fn(props));
+      cacheSize += 1;
+      if (cacheSize === cacheSizeWarn) {
+        console.warn(
+          `${memoizeUnbounded.name} cache size hit ${cacheSizeWarn}, this is probably a bug, stack:\n`,
+          new Error().stack
+        );
+      }
+      const computed = (cache[cacheKey] = fn(param));
       return computed;
     }
   };
 }
 
+/**
+ * Debounce a function using a microtask.
+ */
 function microTaskDebounce(fn: () => void): () => void {
   let scheduled = false;
   return async () => {
