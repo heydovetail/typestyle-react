@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { forceRenderStyles, style, types } from "typestyle";
 
 export type StyleDescriptor = false | types.NestedCSSProperties | null | undefined;
