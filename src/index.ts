@@ -1,5 +1,20 @@
 import * as React from "react";
-import { forceRenderStyles, style, types } from "typestyle";
+import { forceRenderStyles, style as typeStyle, types } from "typestyle";
+
+/**
+ * A wrapped version of TypeStyle's `style(…)` that guarantees that styles will
+ * be available before next paint.
+ *
+ * This is achieved by scheduling a render as a microtask (as opposed to via
+ * `requestAnimationFrame` as done by TypeStyle).
+ */
+export const style: typeof typeStyle = (...args) => {
+  try {
+    return typeStyle(...args);
+  } finally {
+    forceRenderStylesDebounced();
+  }
+};
 
 export type StyleDescriptor = false | types.NestedCSSProperties | null | undefined;
 
@@ -36,15 +51,9 @@ export function styled<T extends keyof DOMElementTypes, StyledProps>(
     InnerRefProps<T> &
     ({} extends StyledProps ? { styled?: StyledProps } : { styled: StyledProps });
 
-  const memoizedComputeClass = memoizeUnbounded((styledProps?: StyledProps) => {
-    try {
-      return style(
-        ...styles.map(s => (typeof s === "function" ? s(styledProps !== undefined ? styledProps : ({} as StyledProps)) : s))
-      );
-    } finally {
-      forceRenderStylesDebounced();
-    }
-  });
+  const memoizedComputeClass = memoizeUnbounded((styledProps?: StyledProps) =>
+    style(...styles.map(s => (typeof s === "function" ? s(styledProps !== undefined ? styledProps : ({} as StyledProps)) : s)))
+  );
 
   return class Styled extends React.PureComponent<Props, { className: string }> {
     public static displayName = `Styled(${tag})`;
