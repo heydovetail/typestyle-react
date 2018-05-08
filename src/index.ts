@@ -29,18 +29,21 @@ export type InnerRefProps<T extends keyof DOMElementTypes> = {
  * Example:
  *
  *     import { styled } from "typestyle-react";
+ *
  *     const Button = styled('button', ({ primary }: { primary: boolean }) => ({
  *       backgroundColor: primary ? 'blue' : 'grey'
  *     }));
- *     const primaryButton = <Button primary />
  *
- * Props can be passed to the intrinsic element via the `inner` prop:
+ *     const primaryButton = <Button styled={{ primary: true }} />
+ *
+ * Styled props are passed via a `styled` prop, while other props (e.g. `id`) can be supplied directly:
  *
  *     import { styled } from "typestyle-react";
+ *
  *     const Button = styled('button', ({ primary }: { primary: boolean }) => ({
  *       backgroundColor: primary ? 'blue' : 'grey'
  *     }));
- *     const primaryButton = <Button primary inner={{ id: "button-id" }} />
+ *     const primaryButton = <Button styled={{ primary: true }} id="button-id" />
  *
  */
 export function styled<T extends keyof DOMElementTypes, StyledProps>(
