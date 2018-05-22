@@ -34,6 +34,15 @@ storiesOf(name, module)
     const Test = styled("span", { color: "green" }, { padding: "5px" }, (_: { foo?: string }) => ({}));
     return <Test>Multiple2</Test>;
   })
+  .add("Test: supports props containing circular references", () => {
+    const Foo = styled("div", (props: { color: string }) => ({
+      color: props.color
+    }));
+
+    const props: { color: string; circular?: {} } = { color: "red" };
+    props.circular = props; // circular
+    return <Foo styled={props}>Red text</Foo>;
+  })
   .add("default", () => {
     const Red = styled("span", ({ color = "red" }: { color?: string }) => ({
       color

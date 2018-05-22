@@ -54,9 +54,14 @@ export function styled<T extends keyof DOMElementTypes, StyledProps>(
     InnerRefProps<T> &
     ({} extends StyledProps ? { styled?: StyledProps } : { styled: StyledProps });
 
-  const memoizedComputeClass = memoizeUnbounded((styledProps?: StyledProps) =>
-    style(...styles.map(s => (typeof s === "function" ? s(styledProps !== undefined ? styledProps : ({} as StyledProps)) : s)))
-  );
+  const styleMemoizeUnbounded = memoizeUnbounded(style);
+
+  const memoizedComputeClass = (styledProps?: StyledProps) => {
+    const properties = styles.map(
+      s => (typeof s === "function" ? s(styledProps !== undefined ? styledProps : ({} as StyledProps)) : s)
+    );
+    return styleMemoizeUnbounded(...properties);
+  };
 
   return class Styled extends React.PureComponent<Props, { className: string }> {
     public static displayName = `Styled(${tag})`;
@@ -96,14 +101,14 @@ export function styled<T extends keyof DOMElementTypes, StyledProps>(
  * stringified (e.g. circular structures).
  */
 function memoizeUnbounded<Param, ReturnValue>(
-  fn: (param: Param) => ReturnValue,
-  serialize: (param: Param) => string = param => JSON.stringify(param)
-): (param: Param) => ReturnValue {
+  fn: (...params: Param[]) => ReturnValue,
+  serialize: (params: Param[]) => string = param => JSON.stringify(param)
+): (...param: Param[]) => ReturnValue {
   const cacheSizeWarn = 1000;
   let cacheSize = 0;
   const cache: { [key: string]: ReturnValue | undefined } = {};
-  return param => {
-    const cacheKey = serialize(param);
+  return (...params) => {
+    const cacheKey = serialize(params);
     const lookup = cache[cacheKey];
     if (lookup !== undefined) {
       return lookup;
@@ -115,7 +120,7 @@ function memoizeUnbounded<Param, ReturnValue>(
           new Error().stack
         );
       }
-      const computed = (cache[cacheKey] = fn(param));
+      const computed = (cache[cacheKey] = fn(...params));
       return computed;
     }
   };
