@@ -1,3 +1,4 @@
+import { debounceMicrotask } from "debounce-microtask";
 import * as React from "react";
 import { forceRenderStyles, style as typeStyle, types } from "typestyle";
 
@@ -126,23 +127,7 @@ function memoizeUnbounded<Param, ReturnValue>(
   };
 }
 
-/**
- * Debounce a function using a microtask.
- */
-function microTaskDebounce(fn: () => void): () => void {
-  let scheduled = false;
-  return async () => {
-    if (!scheduled) {
-      scheduled = true;
-      // Promise is scheduled as a microtask.
-      await Promise.resolve();
-      scheduled = false;
-      fn();
-    }
-  };
-}
-
-const forceRenderStylesDebounced = microTaskDebounce(forceRenderStyles);
+const forceRenderStylesDebounced = debounceMicrotask(forceRenderStyles);
 
 export interface DetailedReactHTMLElements {
   a: React.DetailedReactHTMLElement<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>;
