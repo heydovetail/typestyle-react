@@ -10,18 +10,18 @@ npm install --save typestyle-react
 yarn add typestyle-react
 ```
 
-# Simple Usage
+# `styled(tagName: string, ...properties: (NestedCSSProperties | ((props: {}) => NestedCSSProperties))[])`
 
-It's simple to create a React component that has some styles applied.
+Create a React component with styles applied.
 
 ```tsx
 import { styled } from "typestyle-react";
 
-// Renders a `<span class="…">…</span>`, where `class` is computed by TypeStyle.
 const RedText = styled("span", {
   color: "red"
 });
 
+// Renders a `<span class="…">…</span>`, where `class` is computed by TypeStyle.
 let element = <RedText>Hello world!</RedText>;
 ```
 
@@ -38,9 +38,7 @@ Caveats:
   value.
 * Using `ref` will expose the wrapped component, use `innerRef` to access the
   inner element.
-
-# Advanced Usage
-
+  
 ## Parameterised Styles
 
 Styling can be parameterised, and be passed values via props. Instead of passing
@@ -58,6 +56,22 @@ let element = <ColoredText styled={{ color: "red" }}>Hello world!</ColoredText>;
 ```
 
 **Hint:** Don't confuse the `styled` prop with the native `style` prop.
+
+# `style(...properties: NestedCSSProperties[])`
+
+A wrapper around TypeStyle's `style` export that schedules `forceRenderStyles()` in a microtask.
+
+```tsx
+import { style } from "typestyle-react";
+
+const coloredTextStyle = style({
+  color: "red"
+});
+
+let element = <span className={ccoloredTextStyle}>Hello world!</span>
+```
+
+# Advanced Usage
 
 ## Styles Rendering
 
