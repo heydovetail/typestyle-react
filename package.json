@@ -72,5 +72,6 @@
   },
   "prettier": {
     "printWidth": 128
-  }
+  },
+  "sideEffects": false
 }
