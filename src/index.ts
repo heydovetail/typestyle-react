@@ -9,7 +9,8 @@ import { forceRenderStyles, style as typeStyle, types } from "typestyle";
  * This is achieved by scheduling a render as a microtask (as opposed to via
  * `requestAnimationFrame` as done by TypeStyle).
  */
-export const style: typeof typeStyle = (...args) => {
+// tslint:disable-next-line:no-any
+export const style: typeof typeStyle = (...args: any[]) => {
   try {
     return typeStyle(...args);
   } finally {
