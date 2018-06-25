@@ -2,6 +2,8 @@ import { debounceMicrotask } from "debounce-microtask";
 import * as React from "react";
 import { forceRenderStyles, style as typeStyle, types } from "typestyle";
 
+const emptyObj: Readonly<{}> = {};
+
 /**
  * A wrapped version of TypeStyle's `style(…)` that guarantees that styles will
  * be available before next paint.
@@ -52,17 +54,33 @@ export function styled<T extends keyof DOMElementTypes, StyledProps>(
   tag: T,
   ...styles: Array<StyleDescriptor | ((props: Readonly<StyledProps>) => StyleDescriptor)>
 ) {
+  const hasDynamicStyles = styles.some(s => typeof s === "function");
+
   type Props = JSX.IntrinsicElements[T] &
     InnerRefProps<T> &
     ({} extends StyledProps ? { styled?: StyledProps } : { styled: StyledProps });
 
+  // Fast path when there are no dynamic styles, we can generate the class name
+  // once and use a simple stateless functional component.
+  if (!hasDynamicStyles) {
+    let className: string | null = null;
+    const Styled: React.SFC<Props> = props => {
+      if (className === null) {
+        className = style(...(styles as {}[]));
+      }
+      return render(tag, className, props);
+    };
+    Styled.displayName = `Styled(${tag})`;
+    return Styled;
+  }
+
+  // Slow path using a stateful React.Component to handle dynamic styles.
   const styleMemoizeUnbounded = memoizeUnbounded(style);
 
   const memoizedComputeClass = (styledProps?: StyledProps) => {
-    const properties = styles.map(
-      s => (typeof s === "function" ? s(styledProps !== undefined ? styledProps : ({} as StyledProps)) : s)
+    return styleMemoizeUnbounded(
+      ...styles.map(s => (typeof s === "function" ? s(styledProps !== undefined ? styledProps : (emptyObj as StyledProps)) : s))
     );
-    return styleMemoizeUnbounded(...properties);
   };
 
   return class Styled extends React.PureComponent<Props, { className: string }> {
@@ -73,26 +91,33 @@ export function styled<T extends keyof DOMElementTypes, StyledProps>(
     };
 
     public componentWillReceiveProps(nextProps: Readonly<Props>) {
-      this.setState({
-        className: memoizedComputeClass(nextProps.styled)
-      });
+      const newClassName = memoizedComputeClass(nextProps.styled);
+      if (newClassName !== this.state.className) {
+        this.setState({
+          className: newClassName
+        });
+      }
     }
 
     public render(): DetailedReactHTMLElements[T] {
-      // tslint:disable-next-line:no-any
-      const { innerRef, styled, children, className: innerClassName, ...innerProps } = this.props as any;
-      const { className } = this.state;
-      return React.createElement(
-        tag,
-        {
-          ...innerProps,
-          ref: innerRef,
-          className: innerClassName !== undefined ? `${innerClassName} ${className}` : className
-        },
-        children
-      );
+      return render(tag, this.state.className, this.props);
     }
   };
+}
+
+// tslint:disable-next-line:no-any
+function render<T extends keyof DOMElementTypes>(tag: T, className: string, props: any) {
+  // Separate props that we want to pass down from those we don't (e.g. styled, children, etc).
+  const { innerRef, styled, children, className: innerClassName, ...innerProps } = props;
+  return React.createElement(
+    tag,
+    {
+      ...innerProps,
+      ref: innerRef,
+      className: innerClassName !== undefined ? `${innerClassName} ${className}` : className
+    },
+    children
+  );
 }
 
 /**
