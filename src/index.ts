@@ -1,4 +1,3 @@
-import { debounceMicrotask } from "debounce-microtask";
 import * as React from "react";
 import { forceRenderStyles, style as typeStyle, types } from "typestyle";
 
@@ -16,7 +15,7 @@ export const style: typeof typeStyle = (...args: any[]) => {
   try {
     return typeStyle(...args);
   } finally {
-    forceRenderStylesDebounced();
+    forceRenderStyles();
   }
 };
 
@@ -152,8 +151,6 @@ function memoizeUnbounded<Param, ReturnValue>(
     }
   };
 }
-
-const forceRenderStylesDebounced = debounceMicrotask(forceRenderStyles);
 
 export interface DetailedReactHTMLElements {
   a: React.DetailedReactHTMLElement<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>;
