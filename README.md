@@ -78,7 +78,7 @@ const coloredTextStyle = style({
   color: "red"
 });
 
-let element = <span className={ccoloredTextStyle}>Hello world!</span>;
+let element = <span className={coloredTextStyle}>Hello world!</span>;
 ```
 
 # StyleSheet flushing to DOM
